@@ -38,7 +38,6 @@ export function validateQuery(schema: Joi.ObjectSchema<any>) {
     if (error) {
       return res.status(400).json({ status: "error", message: error.message });
     }
-    // Store validated query in a custom property since req.query is read-only
     (req as any).validatedQuery = value;
     next();
   };

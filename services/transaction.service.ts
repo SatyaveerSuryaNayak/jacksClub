@@ -24,13 +24,10 @@ export type TransactResult = {
 };
 
 export class TransactionService {
-  /**
-   * Process a transaction with idempotency, balance validation, and race condition prevention
-   */
   public async transact(input: TransactInput): Promise<TransactResult> {
     const { idempotentKey, userId, amount, type } = input;
     
-    // Validate user exists
+    // Validation for  user exististence
     const user = await userRepository.getById(userId);
     if (!user) {
       return {
@@ -51,7 +48,7 @@ export class TransactionService {
       };
     }
 
-    // Validate amount
+    // Validation for  amount
     if (amount <= 0) {
       return {
         success: false,
@@ -59,10 +56,10 @@ export class TransactionService {
       };
     }
 
-    // Convert type to uppercase for consistency
+    // Converting type to uppercase for consistency
     const txnType: TransactionType = type.toUpperCase() as TransactionType;
     
-    // Validate balance for debit transactions
+    // Validating balance for debit transactions
     if (txnType === "DEBIT" && user.balance < amount) {
       return {
         success: false,
@@ -70,7 +67,7 @@ export class TransactionService {
       };
     }
 
-    // Generate transaction ID
+    // Generating transaction ID
     const transactionId = uuidv4();
     
     // Calculate new balance
@@ -122,9 +119,6 @@ export class TransactionService {
    * Find transaction by idempotent key
    */
   private async findTransactionByIdempotentKey(idempotentKey: string): Promise<Transaction | null> {
-    // This is a simplified implementation
-    // In production, you'd want to create a GSI on idempotentKey for efficient lookups
-    // For now, we'll scan the transactions table (not ideal for production)
     try {
       const result = await ddbDocClient.send(
         new GetCommand({
@@ -151,9 +145,7 @@ export class TransactionService {
     }
   }
 
-  /**
-   * Process atomic transaction with DynamoDB TransactWriteCommand to prevent race conditions
-   */
+
   private async processAtomicTransaction(params: {
     transactionId: string;
     userId: string;
@@ -165,11 +157,11 @@ export class TransactionService {
   }): Promise<void> {
     const { transactionId, userId, txnType, amount, idempotentKey, newBalance, user } = params;
 
-    // Use DynamoDB TransactWriteCommand for true atomicity
+    
     await ddbDocClient.send(
       new TransactWriteCommand({
         TransactItems: [
-          // 1. Create transaction record
+         
           {
             Put: {
               TableName: TableName.Transactions,
@@ -186,7 +178,6 @@ export class TransactionService {
               ConditionExpression: "attribute_not_exists(pk) AND attribute_not_exists(sk)",
             },
           },
-          // 2. Create idempotency record
           {
             Put: {
               TableName: TableName.Transactions,
@@ -203,7 +194,6 @@ export class TransactionService {
               ConditionExpression: "attribute_not_exists(pk) AND attribute_not_exists(sk)",
             },
           },
-          // 3. Update user balance atomically
           {
             Update: {
               TableName: TableName.Users,

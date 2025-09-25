@@ -11,6 +11,5 @@ export const ddbClient = new DynamoDBClient({
   },
 });
 
-// Document client (easier JSON handling)
 export const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
