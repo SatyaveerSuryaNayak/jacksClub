@@ -1,80 +1,109 @@
 # Jack's Club API
 
+A TypeScript-based transaction and balance management system built with Express.js and DynamoDB.
+
 ## Prerequisites
 
 - Node.js (v14 or higher)
 - Docker (for DynamoDB Local)
 - npm
 
-## Setup
+## Setup & Running
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-2. **Start DynamoDB Local**
-   ```bash
-   docker run -d -p 8000:8000 --name dynamodb-local amazon/dynamodb-local:latest
-   ```
+### 2. Start DynamoDB Local (Docker)
 
-3. **Create database tables**
-   ```bash
-   npm run db:create:users
-   npm run db:create:transactions
-   ```
+**Option A: Using Docker Compose (Recommended)**
+```bash
+cd docker-compose
+docker-compose up -d
+```
 
-4. **Seed a user**
-   ```bash
-   npm run seed:user
-   ```
+**Option B: Using Docker directly**
+```bash
+docker run -d -p 8000:8000 --name dynamodb-local amazon/dynamodb-local:latest
+```
 
-5. **Start the server**
-   ```bash
-   npm run dev
-   ```
+### 3. Start Development Server
+```bash
+npm run dev
+```
 
-   Server will start on `http://localhost:8081`
+Server will start on `http://localhost:8081`
 
-## Available Scripts
+### 4. Create Test User (Optional)
+```bash
+curl -X POST http://localhost:8081/transactions/users \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"u_testuser","name":"Test User","email":"test@example.com","initialBalance":1000,"currency":"INR"}'
+```
 
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build TypeScript to JavaScript
-- `npm run start` - Start production server
-- `npm run db:create:users` - Create Users table in DynamoDB
-- `npm run db:create:transactions` - Create Transactions table in DynamoDB
-- `npm run seed:user` - Seed a test user (satyaveer)
+## API Endpoints Summary
 
-## API Endpoints
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `GET` | `/health` | System health check |
+| `GET` | `/users/:userId/balance` | Get user balance |
+| `POST` | `/transactions/users` | Create new user |
+| `GET` | `/transactions/users/:userId` | Get user details |
+| `POST` | `/transactions/transact` | Process transaction |
+| `GET` | `/transactions/users/:userId/transactions` | Get transaction history |
+
+## Testing Endpoints
 
 ### Health Check
 ```bash
-GET /health
+curl http://localhost:8081/health
 ```
-Returns server health status and DynamoDB connection status.
+**Response:**
+```json
+{"status":"ok"}
+```
 
+### Get User Balance
+```bash
+curl http://localhost:8081/users/u_satyaveer/balance
+```
 **Response:**
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "data": {
+    "balance": 250,
+    "currency": "INR"
+  }
 }
 ```
 
-### User Management
-
-#### Get User Details with balance info
+### Create New User
 ```bash
-GET /transactions/users/:userId
+curl -X POST http://localhost:8081/transactions/users \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"u_newuser","name":"New User","email":"newuser@example.com","initialBalance":500,"currency":"INR"}'
+```
+**Response:**
+```json
+{
+  "status": "ok",
+  "message": "User created successfully",
+  "data": {
+    "id": "u_newuser",
+    "name": "New User",
+    "email": "newuser@example.com",
+    "balance": 500,
+    "currency": "INR"
+  }
+}
 ```
 
-**Parameters:**
-- `userId` (path): User ID in format `u_*` (e.g., `u_satyaveer`)
-
-**Example:**
+### Get User Details
 ```bash
 curl http://localhost:8081/transactions/users/u_satyaveer
 ```
-
 **Response:**
 ```json
 {
@@ -89,92 +118,46 @@ curl http://localhost:8081/transactions/users/u_satyaveer
 }
 ```
 
-### Transaction Management
-
-#### Process Transaction
-```bash
-POST /transactions/transact
-```
-
-**Request Body:**
-```json
-{
-  "idempotentKey": "unique_key_123",
-  "userId": "u_satyaveer",
-  "amount": 100,
-  "type": "credit"
-}
-```
-
-**Parameters:**
-- `idempotentKey` (string): Unique key to prevent duplicate transactions
-- `userId` (string): User ID in format `u_*`
-- `amount` (number): Transaction amount (must be > 0)
-- `type` (string): Either "credit" or "debit"
-
-**Examples:**
-
-Credit transaction:
+### Process Credit Transaction
 ```bash
 curl -X POST http://localhost:8081/transactions/transact \
   -H "Content-Type: application/json" \
   -d '{"idempotentKey":"credit_1","userId":"u_satyaveer","amount":100,"type":"credit"}'
 ```
-
-Debit transaction:
-```bash
-curl -X POST http://localhost:8081/transactions/transact \
-  -H "Content-Type: application/json" \
-  -d '{"idempotentKey":"debit_1","userId":"u_satyaveer","amount":50,"type":"debit"}'
-```
-
-**Response (Success):**
+**Response:**
 ```json
 {
   "status": "ok",
   "data": {
     "transactionId": "uuid-here",
-    "newBalance": 150,
+    "newBalance": 350,
     "message": "Transaction processed successfully"
   }
 }
 ```
 
-**Response (Duplicate):**
+### Process Debit Transaction
+```bash
+curl -X POST http://localhost:8081/transactions/transact \
+  -H "Content-Type: application/json" \
+  -d '{"idempotentKey":"debit_1","userId":"u_satyaveer","amount":50,"type":"debit"}'
+```
+**Response:**
 ```json
 {
   "status": "ok",
   "data": {
     "transactionId": "uuid-here",
-    "newBalance": 150,
-    "message": "Transaction already processed",
-    "existingTransaction": { ... }
+    "newBalance": 300,
+    "message": "Transaction processed successfully"
   }
 }
 ```
 
-**Response (Insufficient Balance):**
-```json
-{
-  "status": "error",
-  "message": "Insufficient balance"
-}
-```
-
-#### Get User Transactions
+### Get Transaction History
 ```bash
-GET /transactions/users/:userId/transactions
+curl "http://localhost:8081/transactions/users/u_satyaveer/transactions?limit=5"
 ```
-
-**Query Parameters:**
-- `limit` (optional): Number of transactions to return (1-100, default: 20)
-- `nextToken` (optional): Pagination token for next page
-
-**Example:**
-```bash
-curl "http://localhost:8081/transactions/users/u_satyaveer/transactions?limit=10"
-```
-
 **Response:**
 ```json
 {
@@ -184,69 +167,53 @@ curl "http://localhost:8081/transactions/users/u_satyaveer/transactions?limit=10
       "id": "uuid-here",
       "userId": "u_satyaveer",
       "txnType": "CREDIT",
-      "status": "SUCCED",
-      "amount": 100,
-      "idempotentKey": "credit_1"
+      "status": "SUCCED"
     }
   ],
-  "nextToken": "base64-encoded-token"
+  "nextToken": "base64-token"
 }
 ```
 
-#### Initialize Credit/Debit (Legacy)
+
+## Available Scripts
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build TypeScript to JavaScript
+- `npm run start` - Start production server
+- `npm test` - Run automated API tests
+
+## Running Tests
+
+To run the automated test suite:
+
 ```bash
-POST /transactions/initCrDr
+# Make sure server is running first
+npm run dev
+
+# In another terminal, run tests
+npm test
 ```
 
-**Request Body:**
-```json
-{
-  "type": "CR",
-  "userId": "u_satyaveer",
-  "amount": 100,
-  "accountNumber": "1234567890",
-  "ifsc": "HDFC0001234"
-}
+The test suite will:
+- ✅ Check all API endpoints
+- ✅ Test user creation and management
+- ✅ Test transaction processing 
+- ✅ Verify error handling
+- ✅ Test validation rules
+
+## Docker Commands
+
+```bash
+# Start DynamoDB with docker-compose
+cd docker-compose
+docker-compose up -d
+
+# Stop DynamoDB
+docker-compose down
+
+# View DynamoDB logs
+docker-compose logs -f
+
+# Restart DynamoDB
+docker-compose restart
 ```
-
-**Note:** This endpoint is for initialization only. Use `/transact` for actual transaction processing.
-
-## Features
-
-- **Idempotency**: Prevents duplicate transactions using idempotent keys
-- **Balance Validation**: Ensures balance cannot go below 0
-- **Race Condition Prevention**: Uses DynamoDB conditional writes
-- **User Validation**: Validates user exists before processing
-- **Pagination**: Supports paginated transaction listing
-- **Input Validation**: Joi validation for all inputs
-- **Type Safety**: Full TypeScript support
-
-## Error Handling
-
-All endpoints return consistent error responses:
-
-```json
-{
-  "status": "error",
-  "message": "Error description"
-}
-```
-
-Common error scenarios:
-- User not found
-- Insufficient balance
-- Invalid input format
-- Duplicate transaction (idempotent key)
-- Server errors
-
-## Database Schema
-
-### Users Table
-- `pk`: `USER#{userId}`
-- `sk`: `USER#{userId}`
-- Fields: `id`, `name`, `email`, `balance`, `currency`
-
-### Transactions Table
-- `pk`: `USER#{userId}` or `IDEMPOTENT#{idempotentKey}`
-- `sk`: `TXN#{transactionId}` or `IDEMPOTENT#{idempotentKey}`
-- Fields: `id`, `userId`, `txnType`, `status`, `amount`, `idempotentKey`
