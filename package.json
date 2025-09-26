@@ -1,0 +1,29 @@
+{
+  "name": "jacks_club",
+  "version": "1.0.0",
+  "description": "Transaction and Balance Management API with DynamoDB",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "node test/simple-test.js"
+  },
+  "keywords": ["typescript", "dynamodb", "transactions", "balance", "api"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.895.0",
+    "@aws-sdk/lib-dynamodb": "^3.895.0",
+    "express": "^5.1.0",
+    "joi": "^17.12.1",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "@types/uuid": "^8.3.4",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,7 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-
 export const ddbClient = new DynamoDBClient({
   region: "us-west-2", // required
   endpoint: process.env.DYNAMO_ENDPOINT || "http://localhost:8000", // local fallback
@@ -13,3 +12,7 @@ export const ddbClient = new DynamoDBClient({
 
 export const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
+export const TableName = {
+  Users: "Users",
+  Transactions: "Transactions",
+};
